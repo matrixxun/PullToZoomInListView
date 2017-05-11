@@ -20,9 +20,9 @@ public class MainActivity extends AppCompatActivity {
                 "ADT","Sqlite3","HttpClient","DDMS","Android Studio","Fragment","Loader"};
 
         listView.setAdapter(new ArrayAdapter<>(MainActivity.this,android.R.layout.simple_list_item_1, adapterData));
-        listView.getHeaderView().setImageResource(R.drawable.splash02);
+        listView.getHeaderView().setImageResource(R.drawable.splash01);
         listView.getHeaderView().setScaleType(ImageView.ScaleType.CENTER_CROP);
-        listView.setShadow(R.drawable.detail_pic_shadow);
+        listView.setShadow(R.drawable.shadow_bottom);
     }
 
 }
