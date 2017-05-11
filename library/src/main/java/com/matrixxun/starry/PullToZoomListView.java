@@ -3,6 +3,7 @@ package com.matrixxun.starry;
 import android.app.Activity;
 import android.content.Context;
 import android.os.SystemClock;
+import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -10,209 +11,35 @@ import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.view.animation.Interpolator;
 import android.widget.AbsListView;
+import android.widget.AbsListView.OnScrollListener;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ListView;
 
-/**
- * Created by matrixxun on 2017/5/10.
- */
-public class PullToZoomListView extends ListView implements
-        AbsListView.OnScrollListener {
+public class PullToZoomListView extends ListView implements OnScrollListener {
     private static final int INVALID_VALUE = -1;
+    private static float DEFAULT_MIN_SCALE = 1.0f;
     private static final String TAG = "PullToZoomListView";
     private static final Interpolator sInterpolator = new Interpolator() {
-        public float getInterpolation(float paramAnonymousFloat) {
-            float f = paramAnonymousFloat - 1.0f;
-            return 1.0f + f * (f * (f * (f * f)));
+        public float getInterpolation(float t) {
+            t -= DEFAULT_MIN_SCALE;
+            return ((((t * t) * t) * t) * t) + DEFAULT_MIN_SCALE;
         }
     };
+    int mActivePointerId = INVALID_VALUE;
     private FrameLayout mHeaderContainer;
-    private ImageView mHeaderImage;
-    private ImageView mShadow;
-    private AbsListView.OnScrollListener mOnScrollListener;
-    private ScalingRunnable mScalingRunnable;
-
     private int mHeaderHeight;
+    private ImageView mHeaderImage;
+    float mLastMotionY = INVALID_VALUE;
+    float mLastScale = INVALID_VALUE;
+    float mMaxScale = INVALID_VALUE;
+    private OnScrollListener mOnScrollListener;
+    private ScalingRunnable mScalingRunnable;
     private int mScreenHeight;
-    private int mActivePointerId = -1;
-    private float mLastMotionY = -1.0f;
-    private float mLastScale = -1.0f;
-    private float mMaxScale = -1.0f;
-
-
-    public PullToZoomListView(Context paramContext) {
-        super(paramContext);
-    }
-
-    public PullToZoomListView(Context paramContext,
-                              AttributeSet paramAttributeSet) {
-        super(paramContext, paramAttributeSet);
-    }
-
-    public PullToZoomListView(Context paramContext,
-                              AttributeSet paramAttributeSet, int paramInt) {
-        super(paramContext, paramAttributeSet, paramInt);
-    }
-
-    @Override
-    protected void onFinishInflate() {
-        super.onFinishInflate();
-        if(isInEditMode()){
-            return;
-        }
-
-        init(getContext());
-    }
-
-    private void endScaling() {
-        if (mHeaderContainer.getBottom() >= mHeaderHeight) {
-            mScalingRunnable.startAnimation(100L);
-        }
-    }
-
-    private void init(Context paramContext) {
-        DisplayMetrics localDisplayMetrics = new DisplayMetrics();
-        ((Activity) paramContext).getWindowManager().getDefaultDisplay().getMetrics(localDisplayMetrics);
-        mScreenHeight = localDisplayMetrics.heightPixels;
-        mHeaderContainer = new FrameLayout(paramContext);
-        mHeaderImage = new ImageView(paramContext);
-        int i = localDisplayMetrics.widthPixels;
-        setHeaderViewSize(i, (int) (9.0f * (i / 16.0f)));
-        mShadow = new ImageView(paramContext);
-        FrameLayout.LayoutParams localLayoutParams = new FrameLayout.LayoutParams(-1, -2);
-        localLayoutParams.gravity = 80;
-        mShadow.setLayoutParams(localLayoutParams);
-        mHeaderContainer.addView(mHeaderImage);
-        mHeaderContainer.addView(mShadow);
-        addHeaderView(mHeaderContainer);
-        mScalingRunnable = new ScalingRunnable();
-        super.setOnScrollListener(this);
-    }
-
-    private void onSecondaryPointerUp(MotionEvent paramMotionEvent) {
-        int i = (paramMotionEvent.getAction()) >> 8;
-        if (paramMotionEvent.getPointerId(i) == mActivePointerId){
-            if (i != 0) {
-                mLastMotionY = paramMotionEvent.getY(0);
-                mActivePointerId = paramMotionEvent.getPointerId(0);
-                return;
-            }
-        }
-    }
-
-    private void reset() {
-        mActivePointerId = -1;
-        mLastMotionY = -1.0f;
-        mMaxScale = -1.0f;
-        mLastScale = -1.0f;
-    }
-
-    public ImageView getHeaderView() {
-        return mHeaderImage;
-    }
-
-    protected void onLayout(boolean paramBoolean, int paramInt1, int paramInt2,int paramInt3, int paramInt4) {
-        super.onLayout(paramBoolean, paramInt1, paramInt2, paramInt3, paramInt4);
-        if (mHeaderHeight == 0){
-            mHeaderHeight = mHeaderContainer.getHeight();
-        }
-    }
-
-    @Override
-    public void onScroll(AbsListView paramAbsListView, int paramInt1,int paramInt2, int paramInt3) {
-        float f = mHeaderHeight -  mHeaderContainer.getBottom();
-        if ((f > 0.0f) && (f < mHeaderHeight)) {
-            int i = (int) (0.65d * f);
-            mHeaderImage.scrollTo(0, -i);
-        } else if (mHeaderImage.getScrollY() != 0) {
-            mHeaderImage.scrollTo(0, 0);
-        }
-        if (mOnScrollListener != null) {
-            mOnScrollListener.onScroll(paramAbsListView, paramInt1,paramInt2, paramInt3);
-        }
-    }
-
-    public void onScrollStateChanged(AbsListView paramAbsListView, int paramInt) {
-        if (mOnScrollListener != null) {
-            mOnScrollListener.onScrollStateChanged(paramAbsListView, paramInt);
-        }
-    }
-
-    public boolean onTouchEvent(MotionEvent motionEvent) {
-        switch (motionEvent.getAction()) {
-            case MotionEvent.ACTION_OUTSIDE:
-                break;
-            case MotionEvent.ACTION_DOWN:
-                if (!mScalingRunnable.mIsFinished) {
-                    mScalingRunnable.abortAnimation();
-                }
-                 mLastMotionY = motionEvent.getY();
-                 mActivePointerId = motionEvent.getPointerId(0);
-                 mMaxScale = ( mScreenHeight / mHeaderHeight);
-                 mLastScale = ( mHeaderContainer.getBottom() /  mHeaderHeight);
-                break;
-            case MotionEvent.ACTION_MOVE:
-                int pointerIndex = motionEvent.findPointerIndex( mActivePointerId);
-                if (pointerIndex == -1) {
-                } else {
-                    if ( mLastMotionY == -1.0f)
-                         mLastMotionY = motionEvent.getY(pointerIndex);
-                    if ( mHeaderContainer.getBottom() >=  mHeaderHeight) {
-                        ViewGroup.LayoutParams localLayoutParams =  mHeaderContainer.getLayoutParams();
-                        float f = ((motionEvent.getY(pointerIndex) -  mLastMotionY +  mHeaderContainer.getBottom()) /  mHeaderHeight -  mLastScale) / 2.0f +  mLastScale;
-                        if (( mLastScale <= 1.0d) && (f <  mLastScale)) {
-                            localLayoutParams.height =  mHeaderHeight;
-                             mHeaderContainer.setLayoutParams(localLayoutParams);
-                            return super.onTouchEvent(motionEvent);
-                        }
-                         mLastScale = Math.min(Math.max(f, 1.0f), mMaxScale);
-                        localLayoutParams.height = ((int) ( mHeaderHeight *  mLastScale));
-                        if (localLayoutParams.height <  mScreenHeight)
-                            mHeaderContainer.setLayoutParams(localLayoutParams);
-                        mLastMotionY = motionEvent.getY(pointerIndex);
-                        return true;
-                    }
-                     mLastMotionY = motionEvent.getY(pointerIndex);
-                }
-                break;
-            case MotionEvent.ACTION_UP:
-                reset();
-                endScaling();
-                break;
-            case 3:
-                int i = motionEvent.getActionIndex();
-                 mLastMotionY = motionEvent.getY(i);
-                 mActivePointerId = motionEvent.getPointerId(i);
-                break;
-            case 5:
-                onSecondaryPointerUp(motionEvent);
-                 mLastMotionY = motionEvent.getY(motionEvent
-                        .findPointerIndex( mActivePointerId));
-                break;
-            case 6:
-        }
-        return super.onTouchEvent(motionEvent);
-    }
-
-    public void setHeaderViewSize(int paramInt1, int paramInt2) {
-        Object localObject = mHeaderContainer.getLayoutParams();
-        if (localObject == null){
-            localObject = new AbsListView.LayoutParams(paramInt1, paramInt2);
-        }
-        ((ViewGroup.LayoutParams) localObject).width = paramInt1;
-        ((ViewGroup.LayoutParams) localObject).height = paramInt2;
-        mHeaderContainer.setLayoutParams((ViewGroup.LayoutParams) localObject);
-        mHeaderHeight = paramInt2;
-    }
-
-    public void setOnScrollListener(AbsListView.OnScrollListener paramOnScrollListener) {
-        mOnScrollListener = paramOnScrollListener;
-    }
-
-    public void setShadow(int paramInt) {
-        mShadow.setBackgroundResource(paramInt);
-    }
+    private boolean mScrollable = true;
+    private ImageView mShadow;
+    private boolean mShowHeaderImage = true;
+    private boolean mZoomable = true;
 
     class ScalingRunnable implements Runnable {
         long mDuration;
@@ -220,38 +47,253 @@ public class PullToZoomListView extends ListView implements
         float mScale;
         long mStartTime;
 
-        public void abortAnimation() {
-            mIsFinished = true;
-        }
-
         public boolean isFinished() {
             return mIsFinished;
         }
 
-        public void run() {
-            float f2;
-            ViewGroup.LayoutParams localLayoutParams;
-            if ((!mIsFinished) && (mScale > 1.0d)) {
-                float f1 = ((float) SystemClock.currentThreadTimeMillis() - (float) mStartTime) / (float) mDuration;
-                f2 = mScale - (mScale - 1.0f) * sInterpolator.getInterpolation(f1);
-                localLayoutParams = mHeaderContainer.getLayoutParams();
-                if (f2 > 1.0f) {
-                    localLayoutParams.height = mHeaderHeight;
-                    localLayoutParams.height = ((int) (f2 * mHeaderHeight));
-                    mHeaderContainer.setLayoutParams(localLayoutParams);
-                    post(this);
-                    return;
-                }
-                mIsFinished = true;
-            }
+        public void abortAnimation() {
+            mIsFinished = true;
         }
 
-        public void startAnimation(long paramLong) {
+        public void startAnimation(long duration) {
             mStartTime = SystemClock.currentThreadTimeMillis();
-            mDuration = paramLong;
-            mScale = ((float) (mHeaderContainer.getBottom()) / mHeaderHeight);
+            mDuration = duration;
+            mScale = ((float) mHeaderContainer.getBottom()) / ((float) mHeaderHeight);
             mIsFinished = false;
             post(this);
         }
+
+        public void run() {
+            if (!mIsFinished && ((double) mScale) > 1.0d) {
+                float scale = mScale - ((mScale - DEFAULT_MIN_SCALE) * sInterpolator.getInterpolation((((float) SystemClock.currentThreadTimeMillis()) - ((float) mStartTime)) / ((float) mDuration)));
+                ViewGroup.LayoutParams params = mHeaderContainer.getLayoutParams();
+                if (scale <= DEFAULT_MIN_SCALE) {
+                    mIsFinished = true;
+                    params.height = mHeaderHeight;
+                } else {
+                    params.height = (int) (((float) mHeaderHeight) * scale);
+                }
+                mHeaderContainer.setLayoutParams(params);
+                post(this);
+            }
+        }
+    }
+
+    public PullToZoomListView(Context context) {
+        super(context);
+        init(context);
+    }
+
+    public PullToZoomListView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init(context);
+    }
+
+    public PullToZoomListView(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
+        init(context);
+    }
+
+    private void init(Context context) {
+        DisplayMetrics metrics = new DisplayMetrics();
+        ((Activity) context).getWindowManager().getDefaultDisplay().getMetrics(metrics);
+        mScreenHeight = metrics.heightPixels;
+        mHeaderContainer = new FrameLayout(context);
+        mHeaderImage = new ImageView(context);
+        int width = metrics.widthPixels;
+        setHeaderViewSize(width, (int) ((((float) width) / 16.0f) * 9.0f));
+        mShadow = new ImageView(context);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-1, -2);
+        params.gravity = 80;
+        mShadow.setLayoutParams(params);
+        mHeaderContainer.addView(mHeaderImage);
+        mHeaderContainer.addView(mShadow);
+        addHeaderView(mHeaderContainer);
+        mScalingRunnable = new ScalingRunnable();
+        super.setOnScrollListener(this);
+    }
+
+    public ImageView getHeaderView() {
+        return mHeaderImage;
+    }
+
+    public void setShadow(int resId) {
+        if (mShowHeaderImage) {
+            mShadow.setBackgroundResource(resId);
+        }
+    }
+
+    public void setHeaderViewSize(int width, int height) {
+        if (mShowHeaderImage) {
+            ViewGroup.LayoutParams params = mHeaderContainer.getLayoutParams();
+            if (params == null) {
+                params = new AbsListView.LayoutParams(width, height);
+            }
+            params.width = width;
+            params.height = height;
+            mHeaderContainer.setLayoutParams(params);
+            mHeaderHeight = height;
+        }
+    }
+
+    public void setZoomable(boolean zoomable) {
+        if (mShowHeaderImage) {
+            mZoomable = zoomable;
+        }
+    }
+
+    public boolean isZoomable() {
+        return mZoomable;
+    }
+
+    public void setScrollable(boolean scrollable) {
+        if (mShowHeaderImage) {
+            mScrollable = scrollable;
+        }
+    }
+
+    public boolean isScrollable() {
+        return mScrollable;
+    }
+
+    public void hideHeaderImage() {
+        mShowHeaderImage = false;
+        mZoomable = false;
+        mScrollable = false;
+        removeHeaderView(mHeaderContainer);
+    }
+
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        if (mHeaderHeight == 0) {
+            mHeaderHeight = mHeaderContainer.getHeight();
+        }
+    }
+
+    private void reset() {
+        mActivePointerId = INVALID_VALUE;
+        mLastMotionY = INVALID_VALUE;
+        mMaxScale = INVALID_VALUE;
+        mLastScale = INVALID_VALUE;
+    }
+
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (!mZoomable) {
+            return super.onInterceptTouchEvent(ev);
+        }
+        switch (ev.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                mActivePointerId = ev.getPointerId(0);
+                mMaxScale = ((float) mScreenHeight) / ((float) mHeaderHeight);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                reset();
+                break;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                mActivePointerId = ev.getPointerId(ev.getActionIndex());
+                break;
+            case MotionEvent.ACTION_POINTER_UP:
+                onSecondaryPointerUp(ev);
+                break;
+        }
+        return super.onInterceptTouchEvent(ev);
+    }
+
+    public boolean onTouchEvent(MotionEvent ev) {
+        if (!mZoomable) {
+            return super.onTouchEvent(ev);
+        }
+        switch (ev.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                if (!mScalingRunnable.mIsFinished) {
+                    mScalingRunnable.abortAnimation();
+                }
+                mLastMotionY = ev.getY();
+                mActivePointerId = ev.getPointerId(0);
+                mMaxScale = ((float) mScreenHeight) / ((float) mHeaderHeight);
+                mLastScale = ((float) mHeaderContainer.getBottom()) / ((float) mHeaderHeight);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                reset();
+                endScaling();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                int activePointerIndex = ev.findPointerIndex(mActivePointerId);
+                if (activePointerIndex != INVALID_VALUE) {
+                    if (mLastMotionY == INVALID_VALUE) {
+                        mLastMotionY = ev.getY(activePointerIndex);
+                    }
+                    if (mHeaderContainer.getBottom() < mHeaderHeight) {
+                        mLastMotionY = ev.getY(activePointerIndex);
+                        break;
+                    }
+                    ViewGroup.LayoutParams params = mHeaderContainer.getLayoutParams();
+                    float scale = ((((((float) mHeaderContainer.getBottom()) + (ev.getY(activePointerIndex) - mLastMotionY)) / ((float) mHeaderHeight)) - mLastScale) / 2.0f) + mLastScale;
+                    if (((double) mLastScale) > 1.0d || scale >= mLastScale) {
+                        mLastScale = Math.min(Math.max(scale, DEFAULT_MIN_SCALE), mMaxScale);
+                        params.height = (int) (((float) mHeaderHeight) * mLastScale);
+                        if (params.height < mScreenHeight) {
+                            mHeaderContainer.setLayoutParams(params);
+                        }
+                        mLastMotionY = ev.getY(activePointerIndex);
+                        return true;
+                    }
+                    params.height = mHeaderHeight;
+                    mHeaderContainer.setLayoutParams(params);
+                    return super.onTouchEvent(ev);
+                }
+                break;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                int index = ev.getActionIndex();
+                mLastMotionY = ev.getY(index);
+                mActivePointerId = ev.getPointerId(index);
+                break;
+            case MotionEvent.ACTION_POINTER_UP:
+                onSecondaryPointerUp(ev);
+                mLastMotionY = ev.getY(ev.findPointerIndex(mActivePointerId));
+                break;
+        }
+        return super.onTouchEvent(ev);
+    }
+
+    private void onSecondaryPointerUp(MotionEvent ev) {
+        int pointerIndex = (ev.getAction() & MotionEventCompat.ACTION_POINTER_INDEX_MASK) >> 8;
+        if (ev.getPointerId(pointerIndex) == mActivePointerId) {
+            int newPointerIndex = pointerIndex == 0 ? 1 : 0;
+            mLastMotionY = ev.getY(newPointerIndex);
+            mActivePointerId = ev.getPointerId(newPointerIndex);
+        }
+    }
+
+    private void endScaling() {
+        if (mHeaderContainer.getBottom() >= mHeaderHeight) {
+            mScalingRunnable.startAnimation(200);
+        }
+    }
+
+    public void onScrollStateChanged(AbsListView view, int scrollState) {
+        if (mOnScrollListener != null) {
+            mOnScrollListener.onScrollStateChanged(view, scrollState);
+        }
+    }
+
+    public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+        if (mScrollable) {
+            float scrollY = (float) (mHeaderHeight - mHeaderContainer.getBottom());
+            if (scrollY > 0.0f && scrollY < ((float) mHeaderHeight)) {
+                mHeaderImage.scrollTo(0, -((int) (((double) scrollY) * 0.65d)));
+            } else if (mHeaderImage.getScrollY() != 0) {
+                mHeaderImage.scrollTo(0, 0);
+            }
+        }
+        if (mOnScrollListener != null) {
+            mOnScrollListener.onScroll(view, firstVisibleItem, visibleItemCount, totalItemCount);
+        }
+    }
+
+    public void setOnScrollListener(OnScrollListener l) {
+        mOnScrollListener = l;
     }
 }

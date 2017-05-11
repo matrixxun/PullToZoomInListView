@@ -15,10 +15,14 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         listView = (PullToZoomListView)findViewById(R.id.list_view);
-        adapterData = new String[] { "Activity","Service","Content Provider","Intent","BroadcastReceiver","ADT","Sqlite3","HttpClient","DDMS","Android Studio","Fragment","Loader" };
+        adapterData = new String[] { "Activity","Service","Content Provider","Intent","BroadcastReceiver",
+                "ADT","Sqlite3","HttpClient","DDMS","Android Studio","Fragment","Loader",
+                "ADT","Sqlite3","HttpClient","DDMS","Android Studio","Fragment","Loader"};
 
         listView.setAdapter(new ArrayAdapter<>(MainActivity.this,android.R.layout.simple_list_item_1, adapterData));
         listView.getHeaderView().setImageResource(R.drawable.splash02);
         listView.getHeaderView().setScaleType(ImageView.ScaleType.CENTER_CROP);
+        listView.setShadow(R.drawable.detail_pic_shadow);
     }
+
 }
