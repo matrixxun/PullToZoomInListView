@@ -269,7 +269,7 @@ public class PullToZoomListView extends ListView implements OnScrollListener {
 
     private void endScaling() {
         if (mHeaderContainer.getBottom() >= mHeaderHeight) {
-            mScalingRunnable.startAnimation(200);
+            mScalingRunnable.startAnimation(150);
         }
     }
 
