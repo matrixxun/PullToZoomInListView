@@ -2,8 +2,11 @@ package com.matrixxun.zoominlist;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.matrixxun.starry.PullToZoomListView;
 
@@ -23,6 +26,12 @@ public class MainActivity extends AppCompatActivity {
         listView.getHeaderView().setImageResource(R.drawable.splash);
         listView.getHeaderView().setScaleType(ImageView.ScaleType.CENTER_CROP);
         listView.setShadow(R.drawable.shadow_bottom);
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Toast.makeText(MainActivity.this,"click index:"+position,Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
 }
