@@ -7,6 +7,7 @@ import android.support.v4.view.MotionEventCompat;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.view.animation.Interpolator;
@@ -17,29 +18,38 @@ import android.widget.ImageView;
 import android.widget.ListView;
 
 public class PullToZoomListView extends ListView implements OnScrollListener {
+
     private static final int INVALID_VALUE = -1;
     private static float DEFAULT_MIN_SCALE = 1.0f;
+
     private static final String TAG = "PullToZoomListView";
-    private static final Interpolator sInterpolator = new Interpolator() {
-        public float getInterpolation(float t) {
-            t -= DEFAULT_MIN_SCALE;
-            return ((((t * t) * t) * t) * t) + DEFAULT_MIN_SCALE;
-        }
-    };
+
     int mActivePointerId = INVALID_VALUE;
+
     private FrameLayout mHeaderContainer;
-    private int mHeaderHeight;
     private ImageView mHeaderImage;
+    private ImageView mShadow;
+
+    private int mScreenHeight;
+    private int mHeaderHeight;
+
     float mLastMotionY = INVALID_VALUE;
     float mLastScale = INVALID_VALUE;
     float mMaxScale = INVALID_VALUE;
+
     private OnScrollListener mOnScrollListener;
-    private ScalingRunnable mScalingRunnable;
-    private int mScreenHeight;
+    private ScalingRunnable mScalingRunnable = new ScalingRunnable();
+
     private boolean mScrollable = true;
-    private ImageView mShadow;
     private boolean mShowHeaderImage = true;
     private boolean mZoomable = true;
+
+    private static final Interpolator sInterpolator = new Interpolator() {
+        public float getInterpolation(float t) {
+            t -= DEFAULT_MIN_SCALE;
+            return (t * t * t * t * t) + DEFAULT_MIN_SCALE;
+        }
+    };
 
     class ScalingRunnable implements Runnable {
         long mDuration;
@@ -81,17 +91,20 @@ public class PullToZoomListView extends ListView implements OnScrollListener {
 
     public PullToZoomListView(Context context) {
         super(context);
-        init(context);
     }
 
     public PullToZoomListView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(context);
     }
 
     public PullToZoomListView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-        init(context);
+    }
+
+    @Override
+    protected void onFinishInflate() {
+        super.onFinishInflate();
+        init(getContext());
     }
 
     private void init(Context context) {
@@ -101,15 +114,15 @@ public class PullToZoomListView extends ListView implements OnScrollListener {
         mHeaderContainer = new FrameLayout(context);
         mHeaderImage = new ImageView(context);
         int width = metrics.widthPixels;
-        setHeaderViewSize(width, (int) ((((float) width) / 16.0f) * 9.0f));
+        setHeaderViewSize(width, (int) ((((float) width) / 16.0f) * 9.0f));//Screen Ratio = 16:9
         mShadow = new ImageView(context);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-1, -2);
-        params.gravity = 80;
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.BOTTOM;
         mShadow.setLayoutParams(params);
         mHeaderContainer.addView(mHeaderImage);
         mHeaderContainer.addView(mShadow);
         addHeaderView(mHeaderContainer);
-        mScalingRunnable = new ScalingRunnable();
         super.setOnScrollListener(this);
     }
 
