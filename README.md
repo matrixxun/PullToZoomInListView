@@ -7,6 +7,9 @@ A Android custom ListView with pull to zoom-in and parallax effect header like P
 1. Support Multi-touch
 2. API level 9+ supported
 
+## Example
+See example code here on Github. You can also see it live downloading [this apk](https://raw.githubusercontent.com/matrixxun/PullToZoomInListView/master/art/app-debug.apk)
+
 License
 --------
 
