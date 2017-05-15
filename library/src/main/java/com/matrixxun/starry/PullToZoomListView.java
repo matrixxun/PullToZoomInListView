@@ -251,7 +251,7 @@ public class PullToZoomListView extends ListView implements OnScrollListener {
                             mHeaderContainer.setLayoutParams(params);
                         }
                         mLastMotionY = ev.getY(activePointerIndex);
-                        return true;
+                        return super.onTouchEvent(ev);
                     }
                     params.height = mHeaderHeight;
                     mHeaderContainer.setLayoutParams(params);
